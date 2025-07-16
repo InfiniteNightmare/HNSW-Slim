@@ -1,5 +1,5 @@
 
-# HNSW-Flash
+# HNSW-Slim
 
 This repository provides the official implementation for the paper **HNSW-Slim: A Light-Weight Vector Index for Approximate Nearest Neighbor Search**.
 
