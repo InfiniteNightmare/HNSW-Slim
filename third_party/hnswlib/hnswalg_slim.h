@@ -1754,8 +1754,20 @@ public:
     return result;
   }
 
-  void patchFromStream(std::istream &in) {
+  void patchFromStream(std::istream &in,
+                       std::unordered_map<uint32_t, std::vector<float>> &new_data) {
+    size_t prev_id_limit = cur_element_count_;
     readBinaryPOD(in, cur_element_count_);
+
+    for (const auto &item : new_data) {
+      uint32_t id = item.first;
+      char *element = elements_ + id * size_data_per_element_;
+
+      memcpy(element + offsetData_, item.second.data(), data_size_);
+      labeltype label_id = id;
+      memcpy(element + label_offset_, &label_id, sizeof(labeltype));
+      label_lookup_[label_id] = id;
+    }
 
     size_t changed_old_cnt = 0, changed_new_cnt = 0;
     readBinaryPOD(in, changed_old_cnt);
@@ -1764,16 +1776,10 @@ public:
     for (size_t i = 0; i < changed_old_cnt + changed_new_cnt; ++i) {
       tableint id;
       readBinaryPOD(in, id);
-      // 1. 读取节点metadata
       char *element = elements_ + id * size_data_per_element_;
-      char *prev_neighbors_ptr = *(char **)(element + offsetNeighbor_);
-      if (i >= changed_old_cnt) {
-        in.read(element, size_data_per_element_);
-      } else {
-        in.read(element, offsetNeighbor_);
-      }
-      label_lookup_[getExternalLabel(id)] = id;
-      // 2. 读取邻居
+      char *prev_neighbors_ptr = nullptr;
+      if (i < changed_old_cnt)
+        prev_neighbors_ptr = *(char **)(element + offsetNeighbor_);
       unsigned int neighborsSize = 0;
       readBinaryPOD(in, neighborsSize);
       if (prev_neighbors_ptr) {
