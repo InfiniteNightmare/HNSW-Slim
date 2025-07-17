@@ -22,7 +22,7 @@ DEFINE_int64(partial, 90, "a% loaded");
 DEFINE_int64(update_size, 10000, "size of each update");
 
 bool updateIndex(httplib::Client &cli,
-                 std::vector<std::pair<uint32_t, std::vector<float>>> &data,
+                 std::unordered_map<uint32_t, std::vector<float>> &data,
                  hnswlib::HierarchicalNSWSlim<float>& hnsw_slim) {
   UpdateIndexRequest req;
   for (const auto &item : data) {
@@ -37,7 +37,7 @@ bool updateIndex(httplib::Client &cli,
   auto res = cli.Post("/updateIndex", req_body, "application/octet-stream");
   if (res && res->status == 200) {
     std::istringstream in(res->body, std::ios::binary);
-    hnsw_slim.patchFromStream(in);
+    hnsw_slim.patchFromStream(in, data);
     return true;
   } else {
     std::cerr << "updateIndex failed: " << (res ? res->status : 0) << std::endl;
@@ -46,6 +46,7 @@ bool updateIndex(httplib::Client &cli,
   }
   return false;
 }
+
 
 int main(int argc, char **argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -84,12 +85,11 @@ int main(int argc, char **argv) {
   cli.set_decompress(false);
   uint32_t loaded_num = data_num * partial / 100;
   for (; loaded_num < data_num; loaded_num += update_size) {
-    auto s_batch = std::chrono::system_clock::now();
-
-    std::vector<std::pair<uint32_t, std::vector<float>>> update_data;
+    std::unordered_map<uint32_t, std::vector<float>> update_data;
     for (int i=0; i<update_size; i++) {
-      update_data.emplace_back(std::make_pair(loaded_num+i, data_set[loaded_num+i]));
+      update_data[loaded_num+i] = data_set[loaded_num+i];
     }
+    auto s_batch = std::chrono::system_clock::now();
     if (!updateIndex(cli, update_data, hnsw_slim)) {
       std::cerr << "Failed to update index" << std::endl;
       return 1;
