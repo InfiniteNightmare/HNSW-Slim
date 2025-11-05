@@ -386,7 +386,7 @@ public:
         if (j + 1 < size) {
           _mm_prefetch((char *)(visited_array + *(data + j + 1)), _MM_HINT_T0);
           _mm_prefetch(getDataByInternalId(*(data + j + 1)),
-                       _MM_HINT_T0); ////////////
+                       _MM_HINT_T0);
         }
 #endif
         if (!(visited_array[candidate_id] == visited_array_tag)) {
@@ -411,8 +411,8 @@ public:
                            compare_by_first_rev);
 #ifdef USE_SSE
             _mm_prefetch(
-                getDataByInternalId(candidate_set[0].second), ///////////
-                _MM_HINT_T0); ////////////////////////
+                getDataByInternalId(candidate_set[0].second),
+                _MM_HINT_T0);
 #endif
 
             if (bare_bone_search || !isMarkedDeleted(candidate_id)) {
@@ -546,7 +546,7 @@ public:
         _mm_prefetch((char *)(visited_array + *(data + j + 1)), _MM_HINT_T0);
         if (j + 1 < size)
           _mm_prefetch(getDataByInternalId(*(data + j + 1)),
-                       _MM_HINT_T0); ////////////
+                       _MM_HINT_T0);
 #endif
         if (!(visited_array[candidate_id] == visited_array_tag)) {
           visited_array[candidate_id] = visited_array_tag;
@@ -570,8 +570,8 @@ public:
                            compare_by_first_rev);
 #ifdef USE_SSE
             _mm_prefetch(
-                getDataByInternalId(candidate_set[0].second), ///////////
-                _MM_HINT_T0); ////////////////////////
+                getDataByInternalId(candidate_set[0].second),
+                _MM_HINT_T0);
 #endif
 
             if (bare_bone_search ||
@@ -852,7 +852,6 @@ public:
               hnsw->fstdistfunc_(hnsw->getDataByInternalId(new_neighbors[j]),
                                  hnsw->getDataByInternalId(current_pair.second),
                                  hnsw->dist_func_param_);
-          // Use Vamana's heuristic?
           if (curdist < current_pair.first) {
             good = false;
             break;
@@ -1667,7 +1666,6 @@ public:
             nbrs_prune[j] = heap.top().second;
             heap.pop();
           }
-          // std::sort(nbrs_prune, nbrs_prune + limit);
           size = limit;
 
         } else {
@@ -1745,16 +1743,12 @@ public:
         free(prev_neighbors_ptr);
       }
     }
-
     std::cout << "changed nodes count: " << changed_old_nodes_count << " + "
               << changed_new_nodes_count << std::endl;
 
     old_nodes_cnt_ = changed_old_nodes_count;
     new_nodes_cnt_ = changed_new_nodes_count;
   }
-
-
-
 
   template <typename data_t>
   std::vector<data_t> getDataByLabel(labeltype label) const {
@@ -2280,7 +2274,6 @@ public:
     }
   }
 
-
   bool getVectorFromBatch(std::istream &in) {
     size_t finished, num_vec;
     readBinaryPOD(in, finished);
@@ -2349,7 +2342,6 @@ public:
   void
   patchFromStream(std::istream &in,
                   std::unordered_map<uint32_t, std::vector<float>> &new_data) {
-    // todo: realloc elements_[cur_element_count_] .etc ?
     size_t prev_id_limit = cur_element_count_;
     readBinaryPOD(in, cur_element_count_);
 

@@ -12,12 +12,14 @@ The code is built upon the [hnswlib](https://github.com/nmslib/hnswlib).
 
 The main datasets evaluated in the paper are summarized below:
 
-| Dataset | Dimension | Base Size | Query Size |
-| ------- | --------- | --------- | ---------- |
-| COHERE [(link)](https://huggingface.co/datasets/Cohere/wikipedia-22-12-es-embeddings) | 768 | 1,000,000 | 10,000 |
-| GIST [(link)](http://corpus-texmex.irisa.fr/) | 960 | 1,000,000 | 1,000 |
-| SIFT [(link)](http://corpus-texmex.irisa.fr/) | 128 | 6,000,000 | 10,000 |
-| DEEP [(link)](http://sites.skoltech.ru/compvision/noimi/) | 96 | 9,000,000 | 10,000 |
+| Dataset                                                                               | Dimension | Base Size   | Query Size |
+|---------------------------------------------------------------------------------------| --------- |-------------| ---------- |
+| COHERE [(link)](https://huggingface.co/datasets/Cohere/wikipedia-22-12-es-embeddings) | 768 | 1,000,000   | 10,000 |
+| GIST [(link)](http://corpus-texmex.irisa.fr/)                                         | 960 | 1,000,000   | 1,000 |
+| SIFT [(link)](http://corpus-texmex.irisa.fr/)                                         | 128 | 6,000,000   | 10,000 |
+| DEEP [(link)](http://sites.skoltech.ru/compvision/noimi/)                             | 96 | 8,000,000   | 10,000 |
+| DEEP [(link)](http://sites.skoltech.ru/compvision/noimi/)                             | 96 | 100,000,000 | 10,000 |
+| MSTuring [(link)](https://github.com/harsha-simhadri/big-ann-benchmarks/tree/main/neurips23)                         | 96 | 100,000,000 | 10,000 |
 
 Example directory structure for the `SIFT` dataset:
 
