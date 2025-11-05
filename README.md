@@ -1,5 +1,5 @@
 
-# HNSW-Slim
+# HNSW-Flash
 
 This repository provides the official implementation for the paper **HNSW-Slim: A Light-Weight Vector Index for Approximate Nearest Neighbor Search**.
 
@@ -70,7 +70,7 @@ make -j
 Ensure you are in the `build` directory before running the following commands.
 
 ### Run HNSW-Slim
-
+**HNSW-Slim**
 ```bash
 ./main --dataset=DATASET --solve_strategy=hnsw_slim --m=M --k=K --ef_construction=EF_CONSTRUCTION --ef_search=EF_SEARCH --branching_factor=BRANCHING_FACTOR --threshold_level=THRESHOLD_LEVEL --top_degree_percent0=TOP_DEGREE_PERCENT0 --top_M0=TOP_M0 --level_ratio=LEVEL_RATIO --Mm_ratio=M_RATIO
 ```
@@ -87,6 +87,9 @@ Where:
 - `TOP_M0`: Number of neighbors retained for each high-degree node in the base layer (i.e., $M_{h_0}$, default 32).
 - `LEVEL_RATIO`: Ratio of neighbors for high-degree nodes in high layers to those in the base layer (i.e., $M_{h} : M_{h_0} \times 100$, default 25).
 - `M_RATIO`: Ratio of neighbors for low-degree to high-degree nodes in the base layer (i.e., $M_{h_0} : M_{l_0} \times 100$, default 50).
+
+****
+
 
 ### Update HNSW-Slim
 **Generate HNSW-Slim index with partially loaded data**
@@ -124,4 +127,32 @@ Where:
 - `BRANCHING_FACTOR`: Branching factor for the HNSW graph.
 - `PARTIAL`: Ratio (%) of the initially loaded data.
 - `UPDATE_SIZE`: Size of data to be updated in each batch.
+- Other parameters use default values.
+
+
+**Server with deletion and reinsertion:**
+```bash
+./hnsw_slim_server_patch --dataset=DATASET --m=M --ef_construction=EF_CONSTRUCTION --branching_factor=BRANCHING_FACTOR --ef_search=EF_SEARCH --partial=PARTIAL --delete_rate=DELETE_RATE
+```
+- `DATASET`: Name of the dataset.
+- `M`: Maximum number of outgoing connections in the HNSW graph.
+- `EF_CONSTRUCTION`: Maximum number of candidate neighbors considered during index construction.
+- `BRANCHING_FACTOR`: Branching factor for the HNSW graph.
+- `EF_SEARCH`: Maximum number of candidates retained during the search phase.
+- `PARTIAL`: Ratio (%) of the partially loaded data.
+- `DELETE_RATE`: Ratio (%) of data partially deleted during the update phase.
+- Other parameters use default values.
+
+**Client with deletion and reinsertion:**
+```bash
+./hnsw_slim_client_update --dataset=DATASET --m=M --ef_construction=EF_CONSTRUCTION --branching_factor=BRANCHING_FACTOR --partial=PARTIAL --update_size=UPDATE_SIZE --k=K --ef_search=EF_SEARCH
+```
+- `DATASET`: Name of the dataset.
+- `M`: Maximum number of outgoing connections in the HNSW graph.
+- `EF_CONSTRUCTION`: Maximum number of candidate neighbors considered during index construction.
+- `BRANCHING_FACTOR`: Branching factor for the HNSW graph.
+- `PARTIAL`: Ratio (%) of the initially loaded data.
+- `UPDATE_SIZE`: Size of data to be updated in each batch.
+- `K`: Number of nearest neighbors to search for.
+- `EF_SEARCH`: Maximum number of candidates retained during the search phase.
 - Other parameters use default values.
