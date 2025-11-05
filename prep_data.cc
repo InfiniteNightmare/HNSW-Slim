@@ -101,10 +101,6 @@ int main(int argc, char **argv) {
 
   suffix +=".graph";
 
-
-
-
-
   size_t out_m = 8;
 
   std::string dataset = "deep15m";
@@ -113,8 +109,6 @@ int main(int argc, char **argv) {
       "../data/" + dataset + "/" + dataset + "_base.fvecs";
   std::string out_path =
       "../data/" + out_data + "/" + out_data + "_base.fvecs";
-
-
 
   {
     std::cout << source_path << std::endl;

@@ -70,7 +70,7 @@ make -j
 Ensure you are in the `build` directory before running the following commands.
 
 ### Run HNSW-Slim
-**HNSW-Slim**
+**HNSW-Slim:**
 ```bash
 ./main --dataset=DATASET --solve_strategy=hnsw_slim --m=M --k=K --ef_construction=EF_CONSTRUCTION --ef_search=EF_SEARCH --branching_factor=BRANCHING_FACTOR --threshold_level=THRESHOLD_LEVEL --top_degree_percent0=TOP_DEGREE_PERCENT0 --top_M0=TOP_M0 --level_ratio=LEVEL_RATIO --Mm_ratio=M_RATIO
 ```
@@ -88,11 +88,42 @@ Where:
 - `LEVEL_RATIO`: Ratio of neighbors for high-degree nodes in high layers to those in the base layer (i.e., $M_{h} : M_{h_0} \times 100$, default 25).
 - `M_RATIO`: Ratio of neighbors for low-degree to high-degree nodes in the base layer (i.e., $M_{h_0} : M_{l_0} \times 100$, default 50).
 
-****
+**HNSW-Slim with RaBitQ quantization:**
+```bash
+./main --dataset=DATASET --solve_strategy=hnsw-slimq --m=M --k=K --ef_construction=EF_CONSTRUCTION --ef_search=EF_SEARCH --branching_factor=BRANCHING_FACTOR --threshold_level=THRESHOLD_LEVEL --top_degree_percent0=TOP_DEGREE_PERCENT0 --top_M0=TOP_M0 --level_ratio=LEVEL_RATIO --Mm_ratio=M_RATIO
+```
+- `DATASET`: Name of the dataset.
+- `M`: Maximum number of outgoing connections in the HNSW graph.
+- `K`: Number of nearest neighbors to search for.
+- `EF_CONSTRUCTION`: Maximum number of candidate neighbors considered during index construction.
+- `EF_SEARCH`: Maximum number of candidates retained during the search phase.
+- `BRANCHING_FACTOR`: Branching factor for the HNSW graph (i.e., $1/p$ in the paper).
+- `THRESHOLD_LEVEL`: Layer at which only this and higher layers are subject to hierarchical pruning (i.e., $L_t$ in the paper).
+- `TOP_DEGREE_PERCENT0`: Percentage of nodes classified as high degree (i.e., $\alpha_0\%=\alpha\%$ in the paper, default 0.02).
+- `TOP_M0`: Number of neighbors retained for each high-degree node in the base layer (i.e., $M_{h_0}$, default 32).
+- `LEVEL_RATIO`: Ratio of neighbors for high-degree nodes in high layers to those in the base layer (i.e., $M_{h} : M_{h_0} \times 100$, default 25).
+- `M_RATIO`: Ratio of neighbors for low-degree to high-degree nodes in the base layer (i.e., $M_{h_0} : M_{l_0} \times 100$, default 50).
 
+**HNSW-SlimZERO:**
+```bash
+./main --dataset=DATASET --solve_strategy=hnsw-slimzero --m=M --k=K --ef_construction=EF_CONSTRUCTION --ef_search=EF_SEARCH --branching_factor=BRANCHING_FACTOR --threshold_level=THRESHOLD_LEVEL --top_degree_percent0=TOP_DEGREE_PERCENT0 --top_M0=TOP_M0 --level_ratio=LEVEL_RATIO --Mm_ratio=M_RATIO --min_indegree0=MIN_INDEGREE0 --min_indegree=MIN_INDEGREE
+```
+- `DATASET`: Name of the dataset.
+- `M`: Maximum number of outgoing connections in the HNSW graph.
+- `K`: Number of nearest neighbors to search for.
+- `EF_CONSTRUCTION`: Maximum number of candidate neighbors considered during index construction.
+- `EF_SEARCH`: Maximum number of candidates retained during the search phase.
+- `BRANCHING_FACTOR`: Branching factor for the HNSW graph (i.e., $1/p$ in the paper).
+- `THRESHOLD_LEVEL`: Layer at which only this and higher layers are subject to hierarchical pruning (i.e., $L_t$ in the paper).
+- `TOP_DEGREE_PERCENT0`: Percentage of nodes classified as high degree (i.e., $\alpha_0\%=\alpha\%$ in the paper, default 0.02).
+- `TOP_M0`: Number of neighbors retained for each high-degree node in the base layer (i.e., $M_{h_0}$, default 32).
+- `LEVEL_RATIO`: Ratio of neighbors for high-degree nodes in high layers to those in the base layer (i.e., $M_{h} : M_{h_0} \times 100$, default 25).
+- `M_RATIO`: Ratio of neighbors for low-degree to high-degree nodes in the base layer (i.e., $M_{h_0} : M_{l_0} \times 100$, default 50).
+- `MIN_INDEGREE0`: Max in-degree of retained neighbors of each node in the base layer;
+- `MIN_INDEGREE`: Max in-degree of retained neighbors of each node in high layers;
 
 ### Update HNSW-Slim
-**Generate HNSW-Slim index with partially loaded data**
+**Generate HNSW-Slim index with partially loaded data** (HNSW_SLIMQ and HNSW_SLIMZERO not supported)
 ```bash
 ./main_partial --dataset=DATASET --solve_strategy=hnsw_slim --k=K --m=M --ef_construction=EF_CONSTRUCTION --branching_factor=BRANCHING_FACTOR --threshold_level=THREASHOLD_LEVEL --partial=PARTIAL
 ```

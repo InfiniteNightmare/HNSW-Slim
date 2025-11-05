@@ -114,7 +114,6 @@ class AlignedAllocator {
       std::memmove(&data_[lo + 1], &data_[lo],
                    (size_ - lo) * sizeof(std::pair<dist_t, tableint>));
       data_[lo] = std::pair<dist_t, tableint>(dist, data_id);
-      // data_[lo] = std::pair<dist_t, tableint>(data_id, dist);
       size_ += static_cast<size_t>(size_ < capacity_);
       cur_ = lo < cur_ ? lo : cur_;
     }
@@ -126,7 +125,6 @@ class AlignedAllocator {
     // get closest unchecked data point
     tableint pop() {
       tableint cur_id = data_[cur_].second;
-      // set_checked(data_[cur_].second);
       data_[cur_].second |= (1 << 31);
       ++cur_;
       while (cur_ < size_ && is_checked(data_[cur_].second)) {
@@ -490,27 +488,10 @@ class AlignedAllocator {
     rabitqlib::hnsw::HierarchicalNSW::EstimateRecord start_estimate_record_thir;
     hnsw->get_full_est(q_to_centroids_vecrify, query_wrapper_test, id2, start_estimate_record_thir);
 
-
-    char* tmp1 = get_bindata_by_internalid(id2);
-    char* tmp2 = get_exdata_by_internalid(id2);
-    char* tmp3 = hnsw->get_bindata_by_internalid(id2);
-    char* tmp4 = hnsw->get_exdata_by_internalid(id2);
-
-    auto cid = get_clusterid_by_internalid(id2);
-    auto cid2 = hnsw->get_clusterid_by_internalid(id2);
-
-    // ip_func_ = hnsw->ip_func_;
-
-
     EstimateRecord start_estimate_record_for;
     get_full_est(q_to_centroids, query_wrapper, id2, start_estimate_record_for,
               hnsw->get_bindata_by_internalid(id2),
               hnsw->get_exdata_by_internalid(id2), hnsw);
-
-
-
-
-    float dist = hnsw->getDist(id1_data, id2);
 
     return start_estimate_record.est_dist;
   }
@@ -850,7 +831,7 @@ template <bool bare_bone_search = true, bool collect_metrics = false>
         if (j + 1 < size) {
           _mm_prefetch((char *)(visited_array + *(data + j + 1)), _MM_HINT_T0);
           _mm_prefetch(getDataByInternalId(*(data + j + 1)),
-                       _MM_HINT_T0); ////////////
+                       _MM_HINT_T0);
         }
 #endif
         if (!(visited_array[candidate_id] == visited_array_tag)) {
@@ -878,8 +859,8 @@ template <bool bare_bone_search = true, bool collect_metrics = false>
                            compare_by_first_rev);
 #ifdef USE_SSE
             _mm_prefetch(
-                getDataByInternalId(candidate_set[0].second), ///////////
-                _MM_HINT_T0); ////////////////////////
+                getDataByInternalId(candidate_set[0].second),
+                _MM_HINT_T0);
 #endif
 
             if (bare_bone_search || !isMarkedDeleted(candidate_id)) {
@@ -1010,18 +991,16 @@ template <bool bare_bone_search = true, bool collect_metrics = false>
 
       for (size_t j = 0; j < size; j++) {
         int candidate_id = data[j];
-//                    if (candidate_id == 0) continue;
 #ifdef USE_SSE
         _mm_prefetch((char *)(visited_array + *(data + j + 1)), _MM_HINT_T0);
         if (j + 1 < size)
           _mm_prefetch(getDataByInternalId(*(data + j + 1)),
-                       _MM_HINT_T0); ////////////
+                       _MM_HINT_T0);
 #endif
         if (!(visited_array[candidate_id] == visited_array_tag)) {
           visited_array[candidate_id] = visited_array_tag;
 
           char *currObj1 = (getDataByInternalId(candidate_id));
-          // dist_t dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
           EstimateRecord start_estimate_record;
           get_bin_est(q_to_centroids, query_wrapper, candidate_id, start_estimate_record);
           get_full_est(q_to_centroids, query_wrapper, candidate_id, start_estimate_record);
@@ -1044,8 +1023,8 @@ template <bool bare_bone_search = true, bool collect_metrics = false>
                            compare_by_first_rev);
 #ifdef USE_SSE
             _mm_prefetch(
-                getDataByInternalId(candidate_set[0].second), ///////////
-                _MM_HINT_T0); ////////////////////////
+                getDataByInternalId(candidate_set[0].second),
+                _MM_HINT_T0);
 #endif
 
             if (bare_bone_search ||
@@ -1089,7 +1068,6 @@ template <bool bare_bone_search = true, bool collect_metrics = false>
         }
       }
     }
-    // free(candidate_set);
   }
 
   char *get_neighbors(tableint internal_id) const {
@@ -1369,14 +1347,6 @@ template <bool bare_bone_search = true, bool collect_metrics = false>
       if (good) {
         for (size_t j = 0; j < new_neighbors.size(); j++) {
           dist_t curdist = hnsw->get_data_dist(i, current_pair.second);
-          dist_t test_dist;
-          {
-            int32_t label = hnsw->get_external_label(i);
-            test_dist = get_full_est(hnsw->rawDataPtr_ + (label * dim_),
-                                      current_pair.second, hnsw);
-          }
-          // dist_t curdist = distFunc(j, current_pair.second);
-          // Use Vamana's heuristic?
           if (curdist < current_pair.first) {
             good = false;
             break;

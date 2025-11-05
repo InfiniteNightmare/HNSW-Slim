@@ -6,21 +6,12 @@
 #include <gflags/gflags.h>
 #include <unistd.h>
 
-// 定义命令行参数
-// DEFINE_string(dataset, "anton1m", "Dataset name, e.g. siftsmall");
 DEFINE_string(dataset, "sift", "Dataset name, e.g. siftsmall");
-// DEFINE_string(solve_strategy, "hnsw_v4_bin", "Solve strategy, e.g. hnsw");
 DEFINE_string(solve_strategy, "hnsw_slim", "Solve strategy, e.g. hnsw");
 DEFINE_int64(k, K, "Top-K nearest neighbors to search for");
 DEFINE_int64(m, M, "Number of neighbors for each node in the index");
 DEFINE_int64(m0, M0,
              "Number of neighbors for each node in the index at level 0");
-// DEFINE_int64(ef_construction, EF_CONSTRUCTION,
-//              "Maximum number of candidate neighbors considered during index "
-//              "construction.");
-// DEFINE_int64(ef_search, EF_SEARCH,
-//              "Maximum number of candidates retained during the search
-//              phase.");
 DEFINE_int64(ef_construction, 128,
              "Maximum number of candidate neighbors considered during index "
              "construction.");
@@ -94,7 +85,6 @@ int main(int argc, char **argv) {
   if (solve_strategy == "hnsw") {
     strategy = new HnswStrategy(source_path, query_path, index_path);
   } else if (solve_strategy == "hnsw_slim") {
-    // strategy = new HnswSlimStrategy(source_path, query_path, index_path);
     if (partial == 100) {
       strategy = new HnswSlimStrategy(source_path, query_path, index_path,
                       threshold_level,
@@ -113,15 +103,8 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-
-
   // Processing
   strategy->solve();
-  // std::cout << "Solve strategy: " + solve_strategy << std::endl;
-  // // strategy->save_knn(knn_path);
-  // // std::cout << "Save knn: " + knn_path << std::endl;
-  // strategy->recall(gt_path);
-  // std::cout << "Recall: " + gt_path << std::endl;
   delete strategy;
   return 0;
 }

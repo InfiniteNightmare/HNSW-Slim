@@ -1,4 +1,4 @@
-// #define CPPHTTPLIB_ZLIB_SUPPORT
+
 #include "httplib.h"
 
 #include "query.pb.h"

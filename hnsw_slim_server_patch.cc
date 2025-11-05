@@ -1,7 +1,6 @@
 #include "hnswlib/hnswalg_slim.h"
 #include "hnswlib/hnswlib.h"
 
-// #define CPPHTTPLIB_ZLIB_SUPPORT
 #include "httplib.h"
 
 #include "query.pb.h"
@@ -68,7 +67,6 @@ void recall(std::string dataset, hnswlib::HierarchicalNSWSlim<float>& hnsw_slim,
 #pragma omp parallel for schedule(dynamic)
   for (uint32_t i = 0; i < query_num; ++i) {
     auto &knn = knn_results[i];
-    // auto& truth_knn = gt_set[i];
     std::vector<uint32_t> truth_knn;
 
     // fetch the top-K ground truth
