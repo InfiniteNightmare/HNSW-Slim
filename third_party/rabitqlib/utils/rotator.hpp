@@ -99,7 +99,7 @@ class MatrixRotator : public Rotator<T> {
 
 static inline void flip_sign(const uint8_t* flip, float* data, size_t dim) {
     constexpr size_t kFloatsPerChunk = 64;  // Process 64 floats per iteration
-
+/*
 #if defined(__AVX512F__)
     static_assert(
         kFloatsPerChunk % 16 == 0,
@@ -137,6 +137,8 @@ static inline void flip_sign(const uint8_t* flip, float* data, size_t dim) {
         _mm512_storeu_ps(&data[i + 48], vec3);
     }
 #elif defined(__AVX2__)
+    */
+#if defined(__AVX2__)
     const __m256 sign_flip = _mm256_castsi256_ps(_mm256_set1_epi32(0x80000000));
 
     for (size_t i = 0; i < dim; i += kFloatsPerChunk) {
@@ -150,6 +152,20 @@ static inline void flip_sign(const uint8_t* flip, float* data, size_t dim) {
 
             float* base = data + i + block * 16;
 
+            // If both AVX512 and AVX2 are available at compile time but runtime
+            // supports both, perform a verification by running an AVX512-like
+            // sequence via scalar fallback into a temporary and compare.
+#if defined(__AVX512F__)
+            alignas(64) float tmp[16];
+            // Emulate AVX512 mask-based flip into tmp using scalar ops for verification
+            for (int t = 0; t < 16; ++t) {
+                uint8_t bit = ((block * 16) + t) / 8;
+                uint8_t bitpos = ((block * 16) + t) % 8;
+                bool should_flip = ((flip[(i / 8) + bit] >> bitpos) & 0x1U);
+                tmp[t] = should_flip ? -base[t] : base[t];
+            }
+#endif
+
             __m256 vec_lo = _mm256_loadu_ps(base);
             __m256 vec_hi = _mm256_loadu_ps(base + 8);
 
@@ -161,6 +177,20 @@ static inline void flip_sign(const uint8_t* flip, float* data, size_t dim) {
 
             _mm256_storeu_ps(base, vec_lo);
             _mm256_storeu_ps(base + 8, vec_hi);
+
+#if defined(__AVX512F__)
+            // Compare tmp vs produced result
+            bool ok = true;
+            for (int t = 0; t < 8; ++t) {
+                if (!float_eq(tmp[t], base[t])) { ok = false; break; }
+            }
+            for (int t = 0; t < 8; ++t) {
+                if (!float_eq(tmp[t + 8], base[t + 8])) { ok = false; break; }
+            }
+            if (!ok) {
+                std::cerr << "[verify] flip_sign: AVX512 scalar emulate vs AVX2 result mismatch\n";
+            }
+#endif
         }
     }
 #else
@@ -267,7 +297,45 @@ class FhtKacRotator : public Rotator<float> {
     }
 
     static void kacs_walk(float* data, size_t len) {
-#if defined(__AVX512F__)
+#if defined(__AVX512F__) && defined(__AVX2__)
+        // Run AVX512-like and AVX2 implementations and compare results.
+        for (size_t i = 0; i < len / 2; i += 16) {
+            // AVX512 path emulation using 16-wide ops
+            __m512 x = _mm512_loadu_ps(&data[i]);
+            __m512 y = _mm512_loadu_ps(&data[i + (len / 2)]);
+
+            __m512 new_x = _mm512_add_ps(x, y);
+            __m512 new_y = _mm512_sub_ps(x, y);
+
+            // store tmp copy
+            alignas(64) float tmp_x[16];
+            alignas(64) float tmp_y[16];
+            _mm512_storeu_ps(tmp_x, new_x);
+            _mm512_storeu_ps(tmp_y, new_y);
+
+            // AVX2 path to destination
+            for (size_t j = 0; j < 16; j += 8) {
+                __m256 ax = _mm256_loadu_ps(&data[i + j]);
+                __m256 ay = _mm256_loadu_ps(&data[i + j + (len / 2)]);
+                __m256 a_new_x = _mm256_add_ps(ax, ay);
+                __m256 a_new_y = _mm256_sub_ps(ax, ay);
+                _mm256_storeu_ps(&data[i + j], a_new_x);
+                _mm256_storeu_ps(&data[i + j + (len / 2)], a_new_y);
+
+                // compare
+                alignas(32) float out_x[8];
+                alignas(32) float out_y[8];
+                _mm256_storeu_ps(out_x, a_new_x);
+                _mm256_storeu_ps(out_y, a_new_y);
+                for (int t = 0; t < 8; ++t) {
+                    if (!float_eq(tmp_x[j + t], out_x[t]) || !float_eq(tmp_y[j + t], out_y[t])) {
+                        std::cerr << "[verify] kacs_walk: AVX512 vs AVX2 mismatch at i=" << (i + j + t) << "\n";
+                        break;
+                    }
+                }
+            }
+        }
+#elif defined(__AVX512F__)
         for (size_t i = 0; i < len / 2; i += 16) {
             __m512 x = _mm512_loadu_ps(&data[i]);
             __m512 y = _mm512_loadu_ps(&data[i + (len / 2)]);

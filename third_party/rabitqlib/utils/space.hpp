@@ -9,6 +9,8 @@
 #include <iostream>
 #include <limits>
 #include <type_traits>
+#include <cmath>
+#include <vector>
 
 #include "rabitqlib/defines.hpp"
 #include "rabitqlib/utils/tools.hpp"
@@ -65,15 +67,25 @@ inline __m256 apply_sign_flip(__m256 values, uint8_t mask_bits) {
     __m256 flip = _mm256_and_ps(sign_flip, _mm256_castsi256_ps(mask_vec));
     return _mm256_xor_ps(values, flip);
 }
-
+#endif  // defined(__AVX2__)
 inline uint32_t extract_interleaved_bit(uint64_t bits, size_t index) {
     size_t block = index / 8;
     size_t lane = index % 8;
     size_t bit_index = block + (lane * 8);
     return static_cast<uint32_t>((bits >> bit_index) & 0x1ULL);
 }
-#endif  // defined(__AVX2__)
 }  // namespace detail
+// Small helpers for runtime verification when both AVX512F and AVX2 are available.
+inline bool float_eq(float a, float b, float tol = 1e-4f) {
+    return std::fabs(a - b) <= tol;
+}
+
+inline bool compare_float_arrays(const float* a, const float* b, size_t n, float tol = 1e-4f) {
+    for (size_t i = 0; i < n; ++i) {
+        if (!float_eq(a[i], b[i], tol)) return false;
+    }
+    return true;
+}
 namespace scalar_impl {
 template <typename T>
 void scalar_quantize_normal(
@@ -443,7 +455,6 @@ inline float ip16_fxu2_avx2(
         sum = _mm512_fmadd_ps(cf, q, sum);
         code_ptr += 4;
     }
-
     result = _mm512_reduce_add_ps(sum);
     return result;
 #elif defined(__AVX2__)
@@ -1227,6 +1238,16 @@ static inline uint64_t reverse_bits_u64(uint64_t n) {
     return n;
 }
 
+// shuffle control: extract the low byte of each 16-bit lane into the
+// lower 8 bytes of each 128-bit lane. Control bytes with high bit set
+// zero the corresponding output byte.
+const __m256i shuffle_ctl = _mm256_setr_epi8(
+    0, 2, 4, 6, 8, 10, 12, 14, (char)0x80, (char)0x80, (char)0x80, (char)0x80,
+    (char)0x80, (char)0x80, (char)0x80, (char)0x80,
+    0, 2, 4, 6, 8, 10, 12, 14, (char)0x80, (char)0x80, (char)0x80, (char)0x80,
+    (char)0x80, (char)0x80, (char)0x80, (char)0x80
+);
+
 inline void transpose_bin(
     const uint16_t* q, uint64_t* tq, size_t padded_dim, size_t b_query
 ) {
@@ -1298,11 +1319,104 @@ inline void transpose_bin(
 #endif
 }
 
+// Emulate _mm512_movepi16_mask for a 64-element uint16_t array on AVX2
+// Returns a 64-bit mask where bit i is the most-significant-bit of data[i]
+inline uint64_t movepi16_mask_64(const uint16_t* data) {
+#if defined(__AVX2__)
+
+    uint64_t result = 0;
+
+    // Process 4 blocks of 16 uint16_t (16*4 = 64)
+    for (int block = 0; block < 4; ++block) {
+        const uint16_t* base = data + block * 16;
+        // load 16 uint16_t -> 256 bits
+        __m256i v = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(base));
+
+        // todo: 16 << 12 ???
+        v = _mm256_slli_epi32(v, 12);
+
+        // arithmetic shift right by 15 to broadcast the sign bit: 0x0000 or 0xFFFF
+        __m256i signs = _mm256_srai_epi16(v, 15);
+
+        // shuffle to extract the low byte of each 16-bit lane into positions 0..7
+        __m256i bytes = _mm256_shuffle_epi8(signs, shuffle_ctl);
+
+        // extract low and high 128-bit lanes
+        __m128i low128 = _mm256_castsi256_si128(bytes);
+        __m128i high128 = _mm256_extracti128_si256(bytes, 1);
+
+        // movemask on 128 yields 16-bit mask; only lower 8 bits contain our data
+        uint32_t mlow = static_cast<uint32_t>(_mm_movemask_epi8(low128)) & 0xFFu;
+        uint32_t mhigh = static_cast<uint32_t>(_mm_movemask_epi8(high128)) & 0xFFu;
+
+        uint32_t block_mask = mlow | (mhigh << 8);
+
+        result |= (uint64_t)block_mask << (block * 16);
+    }
+
+    return result;
+#else
+    // fallback scalar
+    uint64_t r = 0;
+    for (int i = 0; i < 64; ++i) {
+        r |= (uint64_t)((data[i] & 0x8000u) ? 1u : 0u) << i;
+    }
+    return r;
+#endif
+}
+
+// Emulate _mm512_movepi16_mask for a 64-element uint16_t array on AVX2
+// Returns a 64-bit mask where bit i is the most-significant-bit of data[i]
+inline uint16_t movepi16_mask_64(__m256i v) {
+    // uint64_t result = 0;
+    // int block = 0; //to 4
+    // const uint16_t* base = data + block * 16;
+    // load 16 uint16_t -> 256 bits
+    // __m256i v = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(base));
+    //
+    // // : 16 << 12 ???
+    // v = _mm256_slli_epi32(v, 12);
+
+    // arithmetic shift right by 15 to broadcast the sign bit: 0x0000 or 0xFFFF
+    __m256i signs = _mm256_srai_epi16(v, 15);
+
+    // shuffle to extract the low byte of each 16-bit lane into positions 0..7
+    __m256i bytes = _mm256_shuffle_epi8(signs, shuffle_ctl);
+
+    // extract low and high 128-bit lanes
+    __m128i low128 = _mm256_castsi256_si128(bytes);
+    __m128i high128 = _mm256_extracti128_si256(bytes, 1);
+
+    // movemask on 128 yields 16-bit mask; only lower 8 bits contain our data
+    uint32_t mlow = static_cast<uint32_t>(_mm_movemask_epi8(low128)) & 0xFFu;
+    uint32_t mhigh = static_cast<uint32_t>(_mm_movemask_epi8(high128)) & 0xFFu;
+
+    uint32_t block_mask = mlow | (mhigh << 8);
+
+    // result |= (uint64_t)block_mask << (block * 16);
+
+    return block_mask;
+}
+
+
+
+
+
 static inline void new_transpose_bin(
     const uint16_t* q, uint64_t* tq, size_t padded_dim, size_t b_query
 ) {
+
 #if defined(__AVX512F__)
+
     // 512 / 16 = 32
+    const uint16_t* q_cpy = q;
+    const uint64_t* tq_cpy = tq;
+
+    std::vector<uint64_t> tq_verifyer;
+    // padded_dim = 768 ( / 64 = 12)
+    // b_query = 4
+    tq_verifyer.resize(48);
+
     for (size_t i = 0; i < padded_dim; i += 64) {
         __m512i vec_00_to_31 = _mm512_loadu_si512(q);
         __m512i vec_32_to_63 = _mm512_loadu_si512(q + 32);
@@ -1314,12 +1428,15 @@ static inline void new_transpose_bin(
         for (size_t j = 0; j < b_query; ++j) {
             uint32_t v0 = _mm512_movepi16_mask(vec_00_to_31);  // get most significant bit
             uint32_t v1 = _mm512_movepi16_mask(vec_32_to_63);  // get most significant bit
+
+
             // [TODO: remove all reverse_bits]
             v0 = reverse_bits(v0);
             v1 = reverse_bits(v1);
             uint64_t v = (static_cast<uint64_t>(v0) << 32) + v1;
 
             tq[b_query - j - 1] = v;
+            tq_verifyer[b_query - j - 1 + i / 64 * b_query] = v;
 
             vec_00_to_31 = _mm512_slli_epi16(vec_00_to_31, 1);
             vec_32_to_63 = _mm512_slli_epi16(vec_32_to_63, 1);
@@ -1328,41 +1445,44 @@ static inline void new_transpose_bin(
         q += 64;
     }
 #elif defined(__AVX2__)
-    const int shift_bits = (b_query >= 16) ? 0 : static_cast<int>(16 - b_query);
-    const __m128i shift = _mm_cvtsi32_si128(shift_bits);
+    uint32_t shift = 16 - b_query;
     for (size_t i = 0; i < padded_dim; i += 64) {
         __m256i vec_00_to_15 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(q));
         __m256i vec_16_to_31 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(q + 16));
         __m256i vec_32_to_47 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(q + 32));
         __m256i vec_48_to_63 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(q + 48));
 
-        vec_00_to_15 = _mm256_sll_epi16(vec_00_to_15, shift);
-        vec_16_to_31 = _mm256_sll_epi16(vec_16_to_31, shift);
-        vec_32_to_47 = _mm256_sll_epi16(vec_32_to_47, shift);
-        vec_48_to_63 = _mm256_sll_epi16(vec_48_to_63, shift);
+
+        vec_00_to_15 = _mm256_slli_epi16(vec_00_to_15, shift);
+        vec_16_to_31 = _mm256_slli_epi16(vec_16_to_31, shift);
+        vec_32_to_47 = _mm256_slli_epi16(vec_32_to_47, shift);
+        vec_48_to_63 = _mm256_slli_epi16(vec_48_to_63, shift);
 
         for (size_t j = 0; j < b_query; ++j) {
-            __m256i bit00_31 = _mm256_packs_epi16(
-                _mm256_srai_epi16(vec_00_to_15, 15), _mm256_srai_epi16(vec_16_to_31, 15)
-            );
-            __m256i bit32_63 = _mm256_packs_epi16(
-                _mm256_srai_epi16(vec_32_to_47, 15), _mm256_srai_epi16(vec_48_to_63, 15)
-            );
+            uint64_t test0 = movepi16_mask_64(vec_00_to_15);
+            uint64_t test1 = movepi16_mask_64(vec_16_to_31);
+            uint64_t test2 = movepi16_mask_64(vec_32_to_47);
+            uint64_t test3 = movepi16_mask_64(vec_48_to_63);
 
-            uint32_t mask0 = static_cast<uint32_t>(_mm256_movemask_epi8(bit00_31));
-            uint32_t mask1 = static_cast<uint32_t>(_mm256_movemask_epi8(bit32_63));
+            // test0 = (reverse_bits(test0) << 16) | reverse_bits(test1);
+            // test2 = (reverse_bits(test2)) | reverse_bits(test3);
 
-            mask0 = reverse_bits(mask0);
-            mask1 = reverse_bits(mask1);
+            test0 = test1 << 16 | test0;
+            test2 = test3 << 16 | test2;
 
-            tq[b_query - j - 1] = (static_cast<uint64_t>(mask0) << 32) | mask1;
+
+            test0 = reverse_bits(test0);
+            test2 = reverse_bits(test2);
+
+
+            uint64_t v = (static_cast<uint64_t>(test0) << 32) | test2;
+            tq[b_query - j - 1] = v;
 
             vec_00_to_15 = _mm256_slli_epi16(vec_00_to_15, 1);
             vec_16_to_31 = _mm256_slli_epi16(vec_16_to_31, 1);
             vec_32_to_47 = _mm256_slli_epi16(vec_32_to_47, 1);
             vec_48_to_63 = _mm256_slli_epi16(vec_48_to_63, 1);
         }
-
         tq += b_query;
         q += 64;
     }

@@ -65,6 +65,28 @@ inline float warmup_ip_x0_q(
         ip_scalar += ip_arr[k];
         ppc_scalar += ppc_arr[k];
     }
+#if defined(__AVX2__)
+    // Optional verification for machines that support both AVX512VPOPCNTDQ and AVX2:
+    // re-run the same vectorized loop with AVX2 scalarized popcnt and compare
+    // aggregated results. This is relatively expensive so only performed when
+    // compiling with both flags.
+    {
+        size_t ip_chk = 0;
+        size_t ppc_chk = 0;
+        for (size_t i = 0; i < vec_end; i += vec_width) {
+            for (size_t k = 0; k < vec_width; ++k) {
+                uint64_t x = data[i + k];
+                ppc_chk += __builtin_popcountll(x);
+                for (uint32_t j = 0; j < b_query; ++j) {
+                    ip_chk += (__builtin_popcountll(x & query[(i + k) * b_query + j]) << j);
+                }
+            }
+        }
+        if (ip_chk != static_cast<size_t>(ip_scalar) || ppc_chk != static_cast<size_t>(ppc_scalar)) {
+            std::cerr << "[verify] warmup_ip_x0_q: AVX512 popcnt vs AVX2 scalar mismatch\n";
+        }
+    }
+#endif
 #endif
 
     // Process remaining blocks that did not fit in the vectorized loop.
