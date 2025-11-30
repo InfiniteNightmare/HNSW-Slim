@@ -44,7 +44,7 @@ The following baselines are included for comparison:
 | **NSSG [(link)](https://github.com/ZJULearning/SSG)** | High Dimensional Similarity Search With Satellite System Graph: Efficiency, Scalability, and Unindexed Query Compatibility |
 | **Vamana [(link)](https://github.com/microsoft/DiskANN)** | DiskANN: Fast Accurate Billion-Point Nearest Neighbor Search On a Single Node |
 
-> ***Note:*** Since LEANN does not provide open-source code, we implemented its pruning algorithm based on the paper's description, using HNSW as the foundation.
+> ***Note:*** Since LEANN did not provide the open-source code described in the paper, we implemented its pruning algorithm based on the paper's description, using HNSW as the foundation.
 
 ### Environment
 
