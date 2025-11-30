@@ -39,10 +39,13 @@ The following baselines are included for comparison:
 | **Algorithm** | **Reference** |
 |--------------|--------------|
 | **HNSW [(link)](https://github.com/nmslib/hnswlib)** | Efficient and Robust Approximate Nearest Neighbor Search Using Hierarchical Navigable Small World Graphs |
-| **LEANN*** | LEANN: A Low-Storage Vector Index |
+| **LEANN [(link)](https//github.com/yichuan-w/LEANN)** | LEANN: A Low-Storage Vector Index |
 | **NSG [(link)](https://github.com/ZJULearning/nsg)** | Fast Approximate Nearest Neighbor Search With The Navigating Spreading-out Graph |
 | **NSSG [(link)](https://github.com/ZJULearning/SSG)** | High Dimensional Similarity Search With Satellite System Graph: Efficiency, Scalability, and Unindexed Query Compatibility |
 | **Vamana [(link)](https://github.com/microsoft/DiskANN)** | DiskANN: Fast Accurate Billion-Point Nearest Neighbor Search On a Single Node |
+| **Glass [(link)](https://github.com/zilliztech/pyglass)** | Glass: Graph Library for Approximate Similarity Search |
+| **NGT-QG [(link)](https://github.com/yahoojapan/NGT)** | NGT: Neighborhood Graph and Tree for Indexing High-dimensional Data |
+| **SymphonyQG [(link)](https://github.com/gouyt13/SymphonyQG)** | SymphonyQG: Towards Symphonious Integration of Quantization and Graph for Approximate Nearest Neighbor Search |
 
 > ***Note:*** Since LEANN did not provide the open-source code described in the paper, we implemented its pruning algorithm based on the paper's description, using HNSW as the foundation.
 
